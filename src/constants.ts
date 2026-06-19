@@ -8,6 +8,9 @@ export const VIEW_TYPE_MONTHLY_LIST_PLANNER = "monthly-list-planner-view";
 export const VIEW_TYPE_MONTHLY_LIST_SIDEBAR_PLANNER =
 	"monthly-list-sidebar-planner-view";
 
+/** Hover-link source id for Obsidian's page-preview popover on planner chips. */
+export const HOVER_LINK_SOURCE = "diary-planner";
+
 /** Todo chip emoji: completed */
 export const TODO_CHIP_EMOJI_COMPLETED = "✅";
 /** Todo chip emoji: not completed */

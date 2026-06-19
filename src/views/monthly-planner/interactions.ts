@@ -13,6 +13,7 @@ import {
 import { HolidayInfoModal } from "../yearly-planner/modals";
 import { moveFileToDate } from "../yearly-planner/file-operations";
 import { isRecurrenceOccurrenceFile } from "../yearly-planner/file-utils";
+import { HOVER_LINK_SOURCE } from "../../constants";
 import { t } from "../../i18n";
 import type {
 	ChipDragState,
@@ -82,6 +83,25 @@ export class MonthlyInteractionHandler {
 	handlePlannerClick(e: MouseEvent): void {
 		if (Platform.isMobile) return;
 		this.handlePlannerClickAt(e.clientX, e.clientY, e);
+	}
+
+	/** Trigger Obsidian's page-preview popover for the hovered chip/range bar. */
+	handlePlannerHoverLink(e: MouseEvent): void {
+		if (Platform.isMobile) return;
+		const target = e.target;
+		if (!(target instanceof HTMLElement)) return;
+		const chip = target.closest(
+			".monthly-planner-cell-file[data-path], .monthly-planner-range-bar[data-path]",
+		);
+		if (!(chip instanceof HTMLElement) || !chip.dataset.path) return;
+		this.view.app.workspace.trigger("hover-link", {
+			event: e,
+			source: HOVER_LINK_SOURCE,
+			hoverParent: this.view,
+			targetEl: chip,
+			linktext: chip.dataset.path,
+			sourcePath: chip.dataset.path,
+		});
 	}
 
 	handlePlannerKeyDown(e: KeyboardEvent): void {

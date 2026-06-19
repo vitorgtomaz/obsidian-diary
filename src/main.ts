@@ -15,6 +15,7 @@ import {
 	VIEW_TYPE_MONTHLY_SIDEBAR_PLANNER,
 	VIEW_TYPE_MONTHLY_LIST_PLANNER,
 	VIEW_TYPE_MONTHLY_LIST_SIDEBAR_PLANNER,
+	HOVER_LINK_SOURCE,
 } from "./constants";
 import { YearlyPlannerView } from "./views/yearly-planner/view";
 import { YearlySidebarPlannerView } from "./views/yearly-planner/sidebar-view";
@@ -125,6 +126,11 @@ export default class DiaryObsidian extends Plugin {
 		});
 
 		this.addSettingTab(new DiaryObsidianSettingTab(this.app, this));
+
+		this.registerHoverLinkSource(HOVER_LINK_SOURCE, {
+			display: t("hoverLinkSource.display"),
+			defaultMod: true,
+		});
 
 		registerPlannerReminders(this);
 

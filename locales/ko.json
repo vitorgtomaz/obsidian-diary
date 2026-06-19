@@ -147,6 +147,7 @@
 	"settings.mobileCellWidthDesc": "모바일에서 월 셀 너비(rem). 0은 기본값 사용(4.5rem / 4rem, 브레이크포인트별).",
 	"settings.language": "언어",
 	"settings.languageDesc": "플러그인 UI 언어",
+	"hoverLinkSource.display": "Diary 플래너",
 	"country.none": "없음",
 	"country.KR": "대한민국",
 	"country.US": "미국",

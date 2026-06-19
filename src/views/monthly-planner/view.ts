@@ -468,6 +468,13 @@ export class MonthlyPlannerView
 			{ capture: true },
 		);
 		scrollContainer.addEventListener(
+			"mouseover",
+			this.interactionHandler.handlePlannerHoverLink.bind(
+				this.interactionHandler,
+			),
+			{ capture: true },
+		);
+		scrollContainer.addEventListener(
 			"mouseout",
 			this.interactionHandler.handleRangeBarMouseOut.bind(
 				this.interactionHandler,

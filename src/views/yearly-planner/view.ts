@@ -473,6 +473,13 @@ export class YearlyPlannerView
 			{ capture: true },
 		);
 		scrollContainer.addEventListener(
+			"mouseover",
+			this.interactionHandler.handlePlannerHoverLink.bind(
+				this.interactionHandler,
+			),
+			{ capture: true },
+		);
+		scrollContainer.addEventListener(
 			"touchend",
 			this.interactionHandler.handlePlannerTouchEnd.bind(
 				this.interactionHandler,

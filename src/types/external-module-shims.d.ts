@@ -131,6 +131,7 @@ declare module "obsidian" {
 		getLeaf(newLeaf?: string | boolean): WorkspaceLeaf;
 		getMostRecentLeaf(rootSplit?: unknown): WorkspaceLeaf | null;
 		getLeavesOfType(type: string): WorkspaceLeaf[];
+		trigger(name: string, ...data: unknown[]): void;
 		getActiveViewOfType<T extends View>(
 			type: ConstructorPrototype<T>,
 		): T | null;
@@ -223,6 +224,10 @@ declare module "obsidian" {
 		addCommand(command: Command): void;
 		addSettingTab(tab: PluginSettingTab): void;
 		registerInterval(id: number): number;
+		registerHoverLinkSource(
+			id: string,
+			info: { display: string; defaultMod?: boolean },
+		): void;
 	}
 
 	export class PluginSettingTab {
