@@ -1,19 +1,16 @@
-const RANGE_BASENAME_REGEX =
-	/^(\d{4}-\d{2}-\d{2})--(\d{4}-\d{2}-\d{2})(?:-(.+))?$/;
+import {
+	parsePlannerRangeBasename,
+	type ParsedRangeBasename,
+} from "./planner-basename";
 
-export interface ParsedRange {
-	start: string;
-	end: string;
-	suffix?: string;
-}
+export type ParsedRange = ParsedRangeBasename;
 
+/**
+ * Parse a range basename into canonical `YYYY-MM-DD` start/end (+ optional
+ * suffix). Honors the configured filename date format.
+ */
 export function parseRangeBasename(basename: string): ParsedRange | null {
-	const m = basename.match(RANGE_BASENAME_REGEX);
-	if (!m) return null;
-	const [, start, end, suffix] = m;
-	if (!start || !end) return null;
-	if (start > end) return null;
-	return { start, end, suffix: suffix ?? undefined };
+	return parsePlannerRangeBasename(basename);
 }
 
 export function isDateInRange(

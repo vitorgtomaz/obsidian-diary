@@ -1,6 +1,12 @@
 import { App, TFile, TFolder } from "obsidian";
 import { getDaysInMonth } from "../../utils/date";
 import { parseRangeBasename, isDateInRange } from "../../utils/range";
+import {
+	buildRangeBasename,
+	buildSingleBasename,
+	parsePlannerRangeBasename,
+	parsePlannerSingleBasename,
+} from "../../utils/planner-basename";
 import { getRecurrenceRole } from "../../utils/recurrence";
 import type { RangeRunPosition } from "./types";
 
@@ -12,23 +18,50 @@ function normalizePlannerFolder(folder: string): string {
 	return (folder || "Planner").trim().replace(/^\/+|\/+$/g, "");
 }
 
-export function getPlannerMarkdownFiles(
-	app: App,
-	folder: string,
-	scope: PlannerFileScope = "vault",
-): TFile[] {
-	if (scope === "vault") {
-		return app.vault
-			.getMarkdownFiles()
-			.sort((a, b) => a.path.localeCompare(b.path));
+function normalizeFolderPath(folder: string): string {
+	return folder.trim().replace(/^\/+|\/+$/g, "");
+}
+
+function normalizeFolderList(list: string[] | undefined): string[] {
+	if (!Array.isArray(list)) return [];
+	const seen = new Set<string>();
+	for (const raw of list) {
+		const normalized = normalizeFolderPath(raw);
+		if (normalized) seen.add(normalized);
 	}
+	return Array.from(seen);
+}
 
-	const trimmed = normalizePlannerFolder(folder);
-	const root = trimmed
-		? app.vault.getAbstractFileByPath(trimmed)
-		: app.vault.getRoot();
-	if (!(root instanceof TFolder)) return [];
+/**
+ * Module-level folder scope config. Set once from settings (mirrors the
+ * `setLocale` pattern) so include/exclude lists don't need threading through
+ * every `getPlannerMarkdownFiles` call site.
+ */
+let folderScopeConfig: { include: string[]; exclude: string[] } = {
+	include: [],
+	exclude: [],
+};
 
+export function setPlannerFolderScopeConfig(config: {
+	include?: string[];
+	exclude?: string[];
+}): void {
+	folderScopeConfig = {
+		include: normalizeFolderList(config.include),
+		exclude: normalizeFolderList(config.exclude),
+	};
+}
+
+function isUnderFolder(path: string, folder: string): boolean {
+	if (folder === "") return true;
+	return path === folder || path.startsWith(`${folder}/`);
+}
+
+function isUnderAnyFolder(path: string, folders: string[]): boolean {
+	return folders.some((folder) => isUnderFolder(path, folder));
+}
+
+function collectMarkdownInFolder(root: TFolder): TFile[] {
 	const files: TFile[] = [];
 	function collect(current: TFolder): void {
 		for (const child of current.children) {
@@ -43,6 +76,47 @@ export function getPlannerMarkdownFiles(
 		}
 	}
 	collect(root);
+	return files;
+}
+
+function collectMarkdownUnderFolders(app: App, folders: string[]): TFile[] {
+	const byPath = new Map<string, TFile>();
+	for (const folder of folders) {
+		const root = folder
+			? app.vault.getAbstractFileByPath(folder)
+			: app.vault.getRoot();
+		if (!(root instanceof TFolder)) continue;
+		for (const file of collectMarkdownInFolder(root)) {
+			byPath.set(file.path, file);
+		}
+	}
+	return Array.from(byPath.values());
+}
+
+export function getPlannerMarkdownFiles(
+	app: App,
+	folder: string,
+	scope: PlannerFileScope = "vault",
+): TFile[] {
+	const { include, exclude } = folderScopeConfig;
+
+	let files: TFile[];
+	if (include.length > 0) {
+		files = collectMarkdownUnderFolders(app, include);
+	} else if (scope === "vault") {
+		files = app.vault.getMarkdownFiles();
+	} else {
+		const trimmed = normalizePlannerFolder(folder);
+		const root = trimmed
+			? app.vault.getAbstractFileByPath(trimmed)
+			: app.vault.getRoot();
+		files = root instanceof TFolder ? collectMarkdownInFolder(root) : [];
+	}
+
+	if (exclude.length > 0) {
+		files = files.filter((file) => !isUnderAnyFolder(file.path, exclude));
+	}
+
 	return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
@@ -80,7 +154,8 @@ export function getFilePath(
 	day: number,
 ): string {
 	const trimmed = (folder || "Planner").trim();
-	const filename = `${year}-${pad(month)}-${pad(day)}.md`;
+	const canonical = `${year}-${pad(month)}-${pad(day)}`;
+	const filename = `${buildSingleBasename(canonical)}.md`;
 	return trimmed ? `${trimmed}/${filename}` : filename;
 }
 
@@ -163,7 +238,7 @@ export function getRangeFilePath(
 	const trimmed = (folder || "Planner").trim();
 	const startStr = `${startYear}-${pad(startMonth)}-${pad(startDay)}`;
 	const endStr = `${endYear}-${pad(endMonth)}-${pad(endDay)}`;
-	const filename = `${startStr}--${endStr}.md`;
+	const filename = `${buildRangeBasename(startStr, endStr)}.md`;
 	return trimmed ? `${trimmed}/${filename}` : filename;
 }
 
@@ -186,11 +261,7 @@ export function getFilesForDate(
 	const dateStr = `${year}-${pad(month)}-${pad(day)}`;
 
 	const singleFiles = plannerFiles.filter((file) => {
-		return (
-			file.basename === dateStr ||
-			(file.basename.startsWith(`${dateStr}-`) &&
-				!parseRangeBasename(file.basename))
-		);
+		return parsePlannerSingleBasename(file.basename)?.date === dateStr;
 	});
 	singleFiles.sort((a, b) =>
 		a.basename.localeCompare(b.basename, undefined, { numeric: true }),
@@ -268,10 +339,10 @@ function toStringSafe(val: unknown): string | null {
 /** Extract suffix from basename for chip display. Single: YYYY-MM-DD-suffix, Range: YYYY-MM-DD--YYYY-MM-DD-suffix. */
 export function getSuffixFromBasename(basename: string): string | null {
 	const clean = basename.replace(/\.md$/i, "");
-	const rangeParsed = parseRangeBasename(clean);
+	const rangeParsed = parsePlannerRangeBasename(clean);
 	if (rangeParsed?.suffix) return rangeParsed.suffix;
-	const singleMatch = clean.match(/^(\d{4}-\d{2}-\d{2})(?:-(.+))?$/);
-	return singleMatch?.[2] ?? null;
+	const singleParsed = parsePlannerSingleBasename(clean);
+	return singleParsed?.suffix ?? null;
 }
 
 export function getFileTitle(app: App, file: TFile): string {

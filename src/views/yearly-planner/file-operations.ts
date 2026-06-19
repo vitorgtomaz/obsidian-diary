@@ -1,5 +1,10 @@
 import { App, TFile, WorkspaceLeaf } from "obsidian";
 import { parseRangeBasename } from "../../utils/range";
+import {
+	buildRangeBasename,
+	buildSingleBasename,
+	parsePlannerSingleBasename,
+} from "../../utils/planner-basename";
 import { getFilePath } from "./file-utils";
 import {
 	buildRecurrenceSourceFrontmatter,
@@ -60,7 +65,8 @@ export async function moveFileToDate(
 		const endMonth = endDate.getMonth() + 1;
 		const endDay = endDate.getDate();
 
-		const newBasename = `${targetDateStr}--${endYear}-${pad(endMonth)}-${pad(endDay)}${rangeParsed.suffix ? `-${rangeParsed.suffix}` : ""}.md`;
+		const endStr = `${endYear}-${pad(endMonth)}-${pad(endDay)}`;
+		const newBasename = `${buildRangeBasename(targetDateStr, endStr, rangeParsed.suffix)}.md`;
 		const fullNewPath = folder ? `${folder}/${newBasename}` : newBasename;
 
 		if (fullNewPath === file.path) return file;
@@ -73,7 +79,7 @@ export async function moveFileToDate(
 			renamed,
 			(fm: Record<string, unknown>) => {
 				fm.date_start = targetDateStr;
-				fm.date_end = `${endYear}-${pad(endMonth)}-${pad(endDay)}`;
+				fm.date_end = endStr;
 			},
 		);
 		return renamed;
@@ -82,7 +88,7 @@ export async function moveFileToDate(
 	const singleParsed = parseSingleDateBasename(file.basename.replace(/\.md$/i, ""));
 	if (!singleParsed) return null;
 
-	const newBasename = `${targetDateStr}${singleParsed.suffix ? `-${singleParsed.suffix}` : ""}.md`;
+	const newBasename = `${buildSingleBasename(targetDateStr, singleParsed.suffix)}.md`;
 	const fullNewPath = folder ? `${folder}/${newBasename}` : newBasename;
 
 	if (fullNewPath === file.path) return file;
@@ -115,7 +121,7 @@ export async function moveRangeFileToNewDates(
 	if (startStr > endStr) return null;
 
 	const folder = file.parent?.path ?? "";
-	const newBasename = `${startStr}--${endStr}${rangeParsed.suffix ? `-${rangeParsed.suffix}` : ""}.md`;
+	const newBasename = `${buildRangeBasename(startStr, endStr, rangeParsed.suffix)}.md`;
 	const fullNewPath = folder ? `${folder}/${newBasename}` : newBasename;
 
 	if (fullNewPath === file.path) return file;
@@ -213,13 +219,11 @@ export async function createRangeFile(
 	return app.vault.create(path, content);
 }
 
-/** Extract date and optional suffix from basename (e.g. "2026-02-12" or "2026-02-12-meeting"). */
+/** Extract canonical date and optional suffix from a single-date basename. */
 export function parseSingleDateBasename(
 	basename: string,
 ): { date: string; suffix?: string } | null {
-	const m = basename.match(/^(\d{4}-\d{2}-\d{2})(?:-(.+))?$/);
-	if (!m) return null;
-	return { date: m[1] ?? "", suffix: m[2] ?? undefined };
+	return parsePlannerSingleBasename(basename);
 }
 
 /** First calendar day for planner chips: range start, or single date. */
@@ -377,17 +381,20 @@ export async function updateFileTitle(
 
 	if (rangeParsed) {
 		const suffix = newTitle ? sanitizePlannerBasenameSuffix(newTitle) : "";
-		const newBasename = `${rangeParsed.start}--${rangeParsed.end}${
-			suffix ? `-${suffix}` : ""
-		}.md`;
+		const newBasename = `${buildRangeBasename(
+			rangeParsed.start,
+			rangeParsed.end,
+			suffix || undefined,
+		)}.md`;
 		return await renamePlannerFileIfNeeded(app, file, newBasename);
 	}
 
 	if (singleParsed) {
 		const suffix = newTitle ? sanitizePlannerBasenameSuffix(newTitle) : "";
-		const newBasename = `${singleParsed.date}${
-			suffix ? `-${suffix}` : ""
-		}.md`;
+		const newBasename = `${buildSingleBasename(
+			singleParsed.date,
+			suffix || undefined,
+		)}.md`;
 		return await renamePlannerFileIfNeeded(app, file, newBasename);
 	}
 

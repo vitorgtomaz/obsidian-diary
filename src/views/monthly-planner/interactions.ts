@@ -33,6 +33,7 @@ export interface MonthlyPlannerViewDelegate {
 	updateChipDragDropTarget(): void;
 	openCreateFileModal(bounds: SelectionBounds | null): void;
 	openFileOptionsModal(file: TFile): void;
+	openFileInSplit(file: TFile): void;
 	openDaySummaryPanel(year: number, month: number, day: number): void;
 	isCompactLayout(): boolean;
 	isRangeBarInteractionEnabled(): boolean;
@@ -178,6 +179,10 @@ export class MonthlyInteractionHandler {
 					"td[data-year][data-month][data-day]:not(.monthly-planner-cell-invalid)",
 				selection: this.view.clipboardSelection,
 				rerender: () => this.view.render(),
+				onChipModifierClick: (path) => {
+					const file = this.view.app.vault.getAbstractFileByPath(path);
+					if (file instanceof TFile) this.view.openFileInSplit(file);
+				},
 			})
 		) {
 			return;

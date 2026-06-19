@@ -7,6 +7,11 @@ import type {
 	AlternateCalendarSelection,
 } from "./alternate-calendars";
 import { parseRangeBasename } from "./range";
+import {
+	buildRangeBasename,
+	buildSingleBasename,
+	parsePlannerSingleBasename,
+} from "./planner-basename";
 
 export const RECURRENCE_GREGORIAN = "gregorian";
 
@@ -388,7 +393,7 @@ function materializeTargetPath(
 	const folder = source.file.parent?.path ?? "";
 	const cleanBase = source.file.basename.replace(/\.md$/i, "");
 	const rangeParsed = parseRangeBasename(cleanBase);
-	const singleParsed = parseSingleDateBasename(cleanBase);
+	const singleParsed = parsePlannerSingleBasename(cleanBase);
 	const title =
 		rangeParsed?.suffix ??
 		singleParsed?.suffix ??
@@ -398,9 +403,11 @@ function materializeTargetPath(
 	if (rangeParsed) {
 		const span = daysBetween(rangeParsed.start, rangeParsed.end);
 		const rangeEnd = addDays(occurrenceDate, Math.max(0, span - 1));
-		const basename = `${occurrenceDate}--${rangeEnd}${
-			suffix ? `-${suffix}` : ""
-		}.md`;
+		const basename = `${buildRangeBasename(
+			occurrenceDate,
+			rangeEnd,
+			suffix || undefined,
+		)}.md`;
 		return {
 			path: folder ? `${folder}/${basename}` : basename,
 			basename,
@@ -409,7 +416,7 @@ function materializeTargetPath(
 		};
 	}
 
-	const basename = `${occurrenceDate}${suffix ? `-${suffix}` : ""}.md`;
+	const basename = `${buildSingleBasename(occurrenceDate, suffix || undefined)}.md`;
 	return {
 		path: folder ? `${folder}/${basename}` : basename,
 		basename,
@@ -774,19 +781,11 @@ function sanitizePlannerBasenameSuffix(raw: string): string {
 		.trim();
 }
 
-function parseSingleDateBasename(
-	basename: string,
-): { date: string; suffix?: string } | null {
-	const m = basename.match(/^(\d{4}-\d{2}-\d{2})(?:-(.+))?$/);
-	if (!m) return null;
-	return { date: m[1] ?? "", suffix: m[2] ?? undefined };
-}
-
 function getPlannerDateFromBasename(basename: string): string | null {
 	const clean = basename.replace(/\.md$/i, "");
 	const range = parseRangeBasename(clean);
 	if (range) return range.start;
-	const single = parseSingleDateBasename(clean);
+	const single = parsePlannerSingleBasename(clean);
 	return single?.date ?? null;
 }
 

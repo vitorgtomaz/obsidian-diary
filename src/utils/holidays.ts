@@ -41,3 +41,39 @@ export function getHolidaysForYear(
 
 	return { dates, names };
 }
+
+/**
+ * Merge public holidays for several countries into one dataset.
+ * @param countries - ISO 3166-1 alpha-2 country codes.
+ * @param year - Calendar year.
+ * @param types - Holiday types to include. Default: ["public"] only.
+ */
+export function getHolidaysForCountries(
+	countries: string[],
+	year: number,
+	types: HolidayFilterTypes[] = ["public"],
+): HolidayData {
+	const dates = new Set<string>();
+	const names = new Map<string, string[]>();
+
+	for (const rawCountry of countries) {
+		const country = rawCountry.trim();
+		if (!country) continue;
+		let data: HolidayData;
+		try {
+			data = getHolidaysForYear(country, year, types);
+		} catch {
+			continue;
+		}
+		for (const date of data.dates) dates.add(date);
+		for (const [date, countryNames] of data.names) {
+			const existing = names.get(date) ?? [];
+			for (const name of countryNames) {
+				if (!existing.includes(name)) existing.push(name);
+			}
+			names.set(date, existing);
+		}
+	}
+
+	return { dates, names };
+}

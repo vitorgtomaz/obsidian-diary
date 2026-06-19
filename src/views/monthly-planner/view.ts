@@ -45,7 +45,7 @@ import {
 } from "./interactions";
 import { CreateFileModal, FileOptionsModal } from "../yearly-planner/modals";
 import { getSelectionBounds } from "../yearly-planner/selection";
-import { getHolidaysForYear } from "../../utils/holidays";
+import { getHolidaysForCountries } from "../../utils/holidays";
 import { getDaysInMonth, getMonthCalendarCells } from "../../utils/date";
 import { getAlternateCalendarLabel } from "../../utils/alternate-calendars";
 import {
@@ -520,10 +520,10 @@ export class MonthlyPlannerView
 
 		const tbody = table.createEl("tbody");
 		const folder = this.plugin.settings.plannerFolder || "Planner";
-		const { showHolidays, holidayCountry } = this.plugin.settings;
+		const { showHolidays, holidayCountries } = this.plugin.settings;
 		const holidaysData =
-			showHolidays && holidayCountry
-				? getHolidaysForYear(holidayCountry, this.year)
+			showHolidays && holidayCountries.length > 0
+				? getHolidaysForCountries(holidayCountries, this.year)
 				: null;
 		const plannerFileScope = this.plugin.settings.plannerFileScope ?? "vault";
 		const plannerFiles = getPlannerMarkdownFiles(
@@ -663,6 +663,10 @@ export class MonthlyPlannerView
 		).open();
 	}
 
+	openFileInSplit(file: TFile): void {
+		void this.plugin.openPlannerFileInSplit(file);
+	}
+
 	openDaySummaryPanel(year: number, month: number, day: number): void {
 		this.selectedDate = { year, month, day };
 		this.daySummaryOpen = true;
@@ -727,10 +731,12 @@ export class MonthlyPlannerView
 			day,
 			this.plugin.settings.plannerFileScope ?? "vault",
 		);
-		const { showHolidays, holidayCountry } = this.plugin.settings;
+		const { showHolidays, holidayCountries } = this.plugin.settings;
 		const holidayNames =
-			showHolidays && holidayCountry
-				? (getHolidaysForYear(holidayCountry, year).names.get(dateKey) ?? [])
+			showHolidays && holidayCountries.length > 0
+				? (getHolidaysForCountries(holidayCountries, year).names.get(
+						dateKey,
+					) ?? [])
 				: [];
 
 		for (const { file } of rangeFiles) {

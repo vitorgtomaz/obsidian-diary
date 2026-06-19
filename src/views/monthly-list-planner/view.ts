@@ -15,7 +15,7 @@ import {
 	renderPlanNotePanel,
 	syncPlanNotePanelExpandedState,
 } from "../plan-note-panel";
-import { getHolidaysForYear } from "../../utils/holidays";
+import { getHolidaysForCountries } from "../../utils/holidays";
 import {
 	CreateFileModal,
 	FileOptionsModal,
@@ -642,10 +642,10 @@ export class MonthlyListPlannerView extends ItemView {
 
 		const inner = scrollContainer.createDiv({ cls: "monthly-list-planner-inner" });
 		const locale = this.plugin.settings.locale ?? "en";
-		const { showHolidays, holidayCountry } = this.plugin.settings;
+		const { showHolidays, holidayCountries } = this.plugin.settings;
 		const holidaysData =
-			showHolidays && holidayCountry
-				? getHolidaysForYear(holidayCountry, this.year)
+			showHolidays && holidayCountries.length > 0
+				? getHolidaysForCountries(holidayCountries, this.year)
 				: null;
 		const folder = this.plugin.settings.plannerFolder || "Planner";
 		const plannerFileScope = this.plugin.settings.plannerFileScope ?? "vault";

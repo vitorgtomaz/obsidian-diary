@@ -309,6 +309,11 @@ export interface ClipboardModifierClickContext {
 	cellSelector: string;
 	selection: Set<string>;
 	rerender: () => void;
+	/**
+	 * When provided, a modifier-click on a chip/range bar opens that note
+	 * (by path) instead of toggling it in the clipboard selection.
+	 */
+	onChipModifierClick?: (path: string) => void;
 }
 
 /**
@@ -324,6 +329,13 @@ export function applyClipboardModifierClick(
 
 	const chipOrBar = el.closest(ctx.chipBarSelector);
 	if (chipOrBar instanceof HTMLElement && chipOrBar.dataset.path) {
+		ctx.e.preventDefault();
+		ctx.e.stopPropagation();
+		ctx.e.stopImmediatePropagation?.();
+		if (ctx.onChipModifierClick) {
+			ctx.onChipModifierClick(chipOrBar.dataset.path);
+			return true;
+		}
 		const key = makeFileSelectionKey(chipOrBar.dataset.path);
 		if (ctx.e.shiftKey) {
 			if (ctx.selection.has(key)) ctx.selection.delete(key);
@@ -332,9 +344,6 @@ export function applyClipboardModifierClick(
 			ctx.selection.clear();
 			ctx.selection.add(key);
 		}
-		ctx.e.preventDefault();
-		ctx.e.stopPropagation();
-		ctx.e.stopImmediatePropagation?.();
 		ctx.rerender();
 		return true;
 	}

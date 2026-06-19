@@ -25,7 +25,7 @@ import {
 } from "./interactions";
 import { CreateFileModal, FileOptionsModal } from "./modals";
 import { getSelectionBounds } from "./selection";
-import { getHolidaysForYear } from "../../utils/holidays";
+import { getHolidaysForCountries } from "../../utils/holidays";
 import {
 	getRangesForYear,
 	getRangeLaneMap,
@@ -530,10 +530,10 @@ export class YearlyPlannerView
 
 		const tbody = table.createEl("tbody");
 		const folder = this.plugin.settings.plannerFolder || "Planner";
-		const { showHolidays, holidayCountry } = this.plugin.settings;
+		const { showHolidays, holidayCountries } = this.plugin.settings;
 		const holidaysData =
-			showHolidays && holidayCountry
-				? getHolidaysForYear(holidayCountry, this.year)
+			showHolidays && holidayCountries.length > 0
+				? getHolidaysForCountries(holidayCountries, this.year)
 				: null;
 		const plannerFileScope = this.plugin.settings.plannerFileScope ?? "vault";
 		const plannerFiles = getPlannerMarkdownFiles(
@@ -674,6 +674,10 @@ export class YearlyPlannerView
 			() => this.render(),
 			(openFile) => this.plugin.openPlannerFile(this.leaf, openFile),
 		).open();
+	}
+
+	openFileInSplit(file: TFile): void {
+		void this.plugin.openPlannerFileInSplit(file);
 	}
 
 	private shouldUseCompactLayout(): boolean {

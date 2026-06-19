@@ -41,6 +41,13 @@ import {
 	updateFileTodoStatus,
 } from "./file-operations";
 import { parseRangeBasename } from "../../utils/range";
+import {
+	buildRangeBasename,
+	formatPlannerDate,
+	getPlannerDateExample,
+	parsePlannerRangeBasename,
+	parsePlannerSingleBasename,
+} from "../../utils/planner-basename";
 import type { SelectionBounds } from "./types";
 
 /** Additional chip color presets (first preset is theme accent, computed at runtime). No duplicates. */
@@ -296,12 +303,6 @@ function isValidDateStr(str: string): boolean {
 	);
 }
 
-function getSingleDateFromFilename(filename: string): string | null {
-	const m = filename.match(/^(\d{4}-\d{2}-\d{2})(?:-.+)?$/);
-	if (!m) return null;
-	return m[1] ?? null;
-}
-
 export interface CreateFileModalOptions {
 	bounds: SelectionBounds | null;
 	defaultFolder: string;
@@ -510,7 +511,9 @@ export class CreateFileModal extends Modal {
 		});
 		filenameHint.appendText(t("modal.suffixAsTitle"));
 		filenameHint.appendText(" ");
-		filenameHint.appendText(t("modal.suffixExample"));
+		filenameHint.appendText(
+			t("modal.suffixExample", { example: getPlannerDateExample() }),
+		);
 
 		this.colorPresets = getChipColorPresets(this.contentEl.ownerDocument);
 		const defaultColor = this.colorPresets[0]!.hex;
@@ -629,14 +632,12 @@ export class CreateFileModal extends Modal {
 		if (!folder) return t("modal.folderRequired");
 		if (!filename) return t("modal.fileNameRequired");
 		if (this.mode === "single") {
-			const dateStr = getSingleDateFromFilename(filename);
-			if (!dateStr || !isValidDateStr(dateStr)) {
+			if (!parsePlannerSingleBasename(filename)) {
 				return t("modal.invalidDateFileName");
 			}
 			return null;
 		}
-		const range = parseRangeBasename(filename);
-		if (!range || !isValidDateStr(range.start) || !isValidDateStr(range.end)) {
+		if (!parsePlannerRangeBasename(filename)) {
 			return t("modal.invalidRangeFileName");
 		}
 		return null;
@@ -785,20 +786,24 @@ export class CreateFileModal extends Modal {
 		const start = this.startDateInput.value;
 		const end = this.endDateInput.value;
 		if (this.mode === "single") {
-			this.filenameInput.value = start || "";
+			this.filenameInput.value = start ? formatPlannerDate(start) : "";
 		} else {
-			this.filenameInput.value = start && end ? `${start}--${end}` : "";
+			this.filenameInput.value =
+				start && end ? buildRangeBasename(start, end) : "";
 		}
 		this.filenameInput.readOnly = false;
 	}
 
 	private syncDatesFromFilename(): void {
-		const m = this.filenameInput.value.match(
-			/^(\d{4}-\d{2}-\d{2})--(\d{4}-\d{2}-\d{2})(?:-.+)?$/,
-		);
-		if (m) {
-			this.startDateInput.value = m[1] ?? "";
-			this.endDateInput.value = m[2] ?? "";
+		const range = parsePlannerRangeBasename(this.filenameInput.value);
+		if (range) {
+			this.startDateInput.value = range.start;
+			this.endDateInput.value = range.end;
+			return;
+		}
+		const single = parsePlannerSingleBasename(this.filenameInput.value);
+		if (single) {
+			this.startDateInput.value = single.date;
 		}
 	}
 
@@ -1371,7 +1376,8 @@ export class FileOptionsModal extends Modal {
 		if (this.startDateInput?.value) return this.startDateInput.value;
 		return (
 			getRecurrenceSourceDefinition(this.app, file)?.anchorDate ??
-			getSingleDateFromFilename(file.basename)
+			parsePlannerSingleBasename(file.basename)?.date ??
+			null
 		);
 	}
 

@@ -29,6 +29,7 @@ export interface YearlyPlannerViewDelegate {
 	updateChipDragDropTarget(): void;
 	openCreateFileModal(bounds: SelectionBounds | null): void;
 	openFileOptionsModal(file: TFile): void;
+	openFileInSplit(file: TFile): void;
 	isRangeBarInteractionEnabled(): boolean;
 }
 
@@ -326,6 +327,10 @@ export class PlannerInteractionHandler {
 					"td[data-year][data-month][data-day]:not(.yearly-planner-cell-invalid)",
 				selection: this.view.clipboardSelection,
 				rerender: () => this.view.render(),
+				onChipModifierClick: (path) => {
+					const file = this.view.app.vault.getAbstractFileByPath(path);
+					if (file instanceof TFile) this.view.openFileInSplit(file);
+				},
 			})
 		) {
 			return;

@@ -6,6 +6,8 @@ import {
 	DiaryObsidianSettingTab,
 } from "./settings";
 import { normalizeAlternateCalendarId } from "./utils/alternate-calendars";
+import { setPlannerBasenameConfig } from "./utils/planner-basename";
+import { setPlannerFolderScopeConfig } from "./views/yearly-planner/file-utils";
 import {
 	VIEW_TYPE_YEARLY_PLANNER,
 	VIEW_TYPE_YEARLY_SIDEBAR_PLANNER,
@@ -214,6 +216,13 @@ export default class DiaryObsidian extends Plugin {
 		}
 	}
 
+	/** Open a planner note in a new split beside the current editor. */
+	async openPlannerFileInSplit(file: TFile): Promise<void> {
+		const leaf = this.app.workspace.getLeaf("split");
+		await leaf.openFile(file);
+		await this.app.workspace.revealLeaf(leaf);
+	}
+
 	async activateMonthlyListPlanner(): Promise<void> {
 		const { workspace } = this.app;
 		const now = new Date();
@@ -327,11 +336,10 @@ export default class DiaryObsidian extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<DiaryObsidianSettings>,
-		);
+		const data = (await this.loadData()) as
+			| Partial<DiaryObsidianSettings>
+			| null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
 		const legacyEnabledAlternateCalendars =
 			this.settings.enabledAlternateCalendars;
 		const legacyShowLunarDates = this.settings.showLunarDates;
@@ -344,8 +352,20 @@ export default class DiaryObsidian extends Plugin {
 			normalizeYearlyPlannerExpandedMonths(
 				this.settings.yearlyPlannerExpandedMonths,
 			);
+		// Migrate the single holiday country to the new multi-country list.
+		if (!Array.isArray(data?.holidayCountries)) {
+			const legacy = data?.holidayCountry;
+			this.settings.holidayCountries =
+				typeof legacy === "string"
+					? legacy
+						? [legacy]
+						: []
+					: [...DEFAULT_SETTINGS.holidayCountries];
+		}
 		delete this.settings.enabledAlternateCalendars;
 		delete this.settings.showLunarDates;
+		delete this.settings.holidayCountry;
+		this.applyDerivedSettings();
 	}
 
 	async saveSettings() {
@@ -354,10 +374,23 @@ export default class DiaryObsidian extends Plugin {
 			normalizeYearlyPlannerExpandedMonths(
 				this.settings.yearlyPlannerExpandedMonths,
 			);
+		this.applyDerivedSettings();
 		await this.saveData(this.settings);
 		this.refreshYearlyPlannerViews();
 		this.refreshMonthlyPlannerViews();
 		this.refreshMonthlyListPlannerViews();
+	}
+
+	/** Push settings that drive module-level config (date format, folder scope). */
+	private applyDerivedSettings(): void {
+		setPlannerBasenameConfig({
+			dateFormat: this.settings.dateFormat,
+			customFileRegex: this.settings.customFileRegex,
+		});
+		setPlannerFolderScopeConfig({
+			include: this.settings.includeFolders,
+			exclude: this.settings.excludeFolders,
+		});
 	}
 
 	/** Toggle plan note panel expanded state and persist. */
